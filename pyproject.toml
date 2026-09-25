@@ -1,0 +1,2 @@
+[tool.fastapi]
+entrypoint = "backend.__init__:app"
