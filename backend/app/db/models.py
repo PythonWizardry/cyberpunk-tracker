@@ -17,7 +17,7 @@ class Quest(SQLModel, table=True):
     quest_type: QuestType = Field(nullable=False)
     wiki_url: str | None = Field(max_length=2048)
 
-    progress: Progress | None = Relationship(back_populates="quest", uselist=False, sa_relationship_kwargs={"lazy": "selectin"})
+    progress: Progress | None = Relationship(back_populates="quest", sa_relationship_kwargs={"lazy": "selectin"})
 
     def __repr__(self): 
         return f"<Quest {self.name}>"
