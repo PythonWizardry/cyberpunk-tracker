@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
 from curl_cffi import requests
+from curl_cffi.requests import AsyncSession
+import asyncio
 from backend.db.models import QuestType
 
 WIKI_BASE = "https://cyberpunk.fandom.com"
@@ -28,22 +30,45 @@ def parse_quests(html: str, quest_type: QuestType) -> list[dict]:
 
             quests.append({
                 "name": a.get_text(strip=True),
-                "wiki_url": WIKI_BASE + a["href"],
                 "quest_type": quest_type,
+                "wiki_url": WIKI_BASE + a["href"]
             })
 
     return quests
 
 
-def testing_scrapper():
-    resp = requests.get(MAIN_QUESTS_URL, impersonate="chrome124")
+async def fetch(session: AsyncSession, url: str, quest_type: QuestType):
+    resp = await session.get(url, impersonate="chrome124")
     resp.raise_for_status()
-    print(f"Status: {resp.status_code} | Size: {len(resp.text)} bytes")
+    return parse_quests(resp.text, quest_type)
 
-    quests = parse_quests(resp.text, QuestType.main)
-    print(f"Found {len(quests)} quests:")
+
+async def scrape_all_quests() -> list[dict]:
+    async with AsyncSession(impersonate="chrome124") as session:
+        main_quests, side_quests, gigs = await asyncio.gather(
+            fetch(session, MAIN_QUESTS_URL, QuestType.main),
+            fetch(session, SIDE_QUESTS_URL, QuestType.side),
+            fetch(session, GIGS_URL, QuestType.gig),
+        )
+    return main_quests + side_quests + gigs
+
+
+if __name__ == "__main__":
+    quests = asyncio.run(scrape_all_quests())
     for q in quests:
-        print(f"  {q['name']}  ->  {q['wiki_url']}")
+        print(q)
+    print(len(quests))
 
 
-testing_scrapper()
+# def testing_scrapper():
+#     resp = requests.get(MAIN_QUESTS_URL, impersonate="chrome124")
+#     resp.raise_for_status()
+#     print(f"Status: {resp.status_code} | Size: {len(resp.text)} bytes")
+
+#     quests = parse_quests(resp.text, QuestType.main)
+#     print(f"Found {len(quests)} quests:")
+#     for q in quests:
+#         print(f"  {q['name']}  ->  {q['wiki_url']}")
+
+
+# testing_scrapper()
